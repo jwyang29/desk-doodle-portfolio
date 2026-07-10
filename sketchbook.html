@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>낙서장 ✏️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← 책상으로</a>
+    <h1>낙서장 ✏️</h1>
+    <p class="sub">마우스로 마음껏 그려보세요.</p>
+    <div class="card">
+      <div class="tools">
+        <span class="swatch active" style="background:#111" data-color="#111"></span>
+        <span class="swatch" style="background:#e5484d" data-color="#e5484d"></span>
+        <span class="swatch" style="background:#f5a524" data-color="#f5a524"></span>
+        <span class="swatch" style="background:#2b8a3e" data-color="#2b8a3e"></span>
+        <span class="swatch" style="background:#1c7ed6" data-color="#1c7ed6"></span>
+        <button id="clear">전체 지우기 🧽</button>
+        <button id="save">디지털 드로잉에 저장 💾</button>
+      </div>
+      <canvas id="pad" class="pad"></canvas>
+    </div>
+  </div>
+  <script src="storage.js"></script>
+  <script>
+    const canvas = document.getElementById("pad");
+    const ctx = canvas.getContext("2d");
+    let color = "#111", drawing = false;
+    function fit() {
+      const r = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const img = ctx.getImageData ? null : null; // keep simple; resize clears
+      canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = 4;
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    canvas.addEventListener("pointerdown", (e) => { drawing = true; const p = pos(e); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+    canvas.addEventListener("pointermove", (e) => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+    const stop = () => (drawing = false);
+    canvas.addEventListener("pointerup", stop);
+    canvas.addEventListener("pointerleave", stop);
+    document.querySelectorAll(".swatch").forEach((s) => s.addEventListener("click", () => {
+      color = s.dataset.color;
+      document.querySelectorAll(".swatch").forEach((x) => x.classList.remove("active"));
+      s.classList.add("active");
+    }));
+    document.getElementById("clear").addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+    document.getElementById("save").addEventListener("click", () => {
+      if (saveDrawingFromCanvas(canvas, "낙서장")) showToast("저장됐어요! 디지털 드로잉에서 볼 수 있어요 🎨");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doodle Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="scene">
+    <!-- 무대: 배경이 크기를 정하고, 오브젝트 이미지들이 그 위에 겹쳐 얹힘 -->
+    <div class="stage" id="stage">
+      <img class="bg" src="assets/background.png" alt="책상" />
+      <!-- 오브젝트 오버레이 레이어는 script.js에서 생성 -->
+    </div>
+  </main>
+  <div class="tooltip" id="tooltip" hidden></div>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>디지털 드로잉 🎨</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← 책상으로</a>
+    <h1>디지털 드로잉 🎨</h1>
+    <p class="sub">낙서장과 물감 놀이에서 저장한 그림들이 여기 모여요.</p>
+    <div class="grid" id="grid"></div>
+  </div>
+  <script src="storage.js"></script>
+  <script>
+    const grid = document.getElementById("grid");
+    function fmt(iso) {
+      const d = new Date(iso);
+      return (d.getMonth() + 1) + "/" + d.getDate();
+    }
+    function render() {
+      const list = getDrawings();
+      grid.innerHTML = "";
+      if (!list.length) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "아직 저장된 그림이 없어요. 책상의 낙서장✏️이나 물감🖌️에서 그린 뒤 ‘저장’을 눌러보세요!";
+        grid.appendChild(p);
+        return;
+      }
+      list.forEach((d) => {
+        const fig = document.createElement("figure");
+        const img = document.createElement("img");
+        img.className = "thumb-img";
+        img.src = d.src;
+        img.alt = d.from + " 그림";
+        const cap = document.createElement("figcaption");
+        const label = document.createElement("span");
+        label.textContent = (d.from || "그림") + " · " + fmt(d.at);
+        const del = document.createElement("button");
+        del.className = "del";
+        del.textContent = "✕";
+        del.title = "삭제";
+        del.addEventListener("click", () => { removeDrawing(d.id); render(); });
+        cap.append(label, del);
+        fig.append(img, cap);
+        grid.appendChild(fig);
+      });
+    }
+    render();
+    // 다른 탭/창에서 저장돼도 반영
+    window.addEventListener("storage", render);
+  </script>
+</body>
+</html>

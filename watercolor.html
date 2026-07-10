@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>물감 놀이 🖌️</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pages.css" />
+  <style>
+    .paintwrap { position: relative; }
+    canvas.paint { width: 100%; height: min(62vh, 540px); background: #fff; border: 3px solid var(--ink); border-radius: 14px; display: block; cursor: crosshair; touch-action: none; }
+    .palette { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+    .dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--ink); cursor: pointer; }
+    .dot.active { outline: 3px solid var(--ink); outline-offset: 2px; }
+    .tools button { font-family: inherit; cursor: pointer; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 7px 14px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← 책상으로</a>
+    <h1>물감 놀이 🖌️</h1>
+    <p class="sub">아무 데나 눌러서 물감을 튀겨보세요. (꾹 누르면 계속 번져요)</p>
+    <div class="card">
+      <div class="tools palette" id="palette"></div>
+      <div class="tools">
+        <button id="clear">전체 지우기 🧽</button>
+        <button id="save">디지털 드로잉에 저장 💾</button>
+      </div>
+      <div class="paintwrap"><canvas id="paint" class="paint"></canvas></div>
+    </div>
+  </div>
+  <script src="storage.js"></script>
+  <script>
+    const COLORS = ["#e5484d","#f5a524","#f6e05e","#2b8a3e","#1c7ed6","#9c36b5","#111"];
+    const canvas = document.getElementById("paint");
+    const ctx = canvas.getContext("2d");
+    let color = COLORS[0], dpr = window.devicePixelRatio || 1, holding = false, hx = 0, hy = 0;
+
+    function fit() {
+      const r = canvas.getBoundingClientRect();
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    fit(); window.addEventListener("resize", fit);
+
+    const palette = document.getElementById("palette");
+    COLORS.forEach((c, i) => {
+      const d = document.createElement("div");
+      d.className = "dot" + (i === 0 ? " active" : "");
+      d.style.background = c;
+      d.addEventListener("click", () => { color = c; palette.querySelectorAll(".dot").forEach((x) => x.classList.remove("active")); d.classList.add("active"); });
+      palette.appendChild(d);
+    });
+
+    function splat(x, y, radius) {
+      ctx.save(); ctx.fillStyle = color; ctx.globalAlpha = 0.85; ctx.beginPath();
+      const pts = 14;
+      for (let i = 0; i <= pts; i++) {
+        const a = (i / pts) * Math.PI * 2, rr = radius * (0.7 + Math.random() * 0.6);
+        const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      const n = 6 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < n; i++) {
+        const ang = Math.random() * Math.PI * 2, dist = radius + Math.random() * radius * 3;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, 1 + Math.random() * radius * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    canvas.addEventListener("pointerdown", (e) => { const p = pos(e); holding = true; hx = p.x; hy = p.y; splat(p.x, p.y, 18 + Math.random() * 14); });
+    canvas.addEventListener("pointermove", (e) => { const p = pos(e); hx = p.x; hy = p.y; });
+    const stop = () => (holding = false);
+    canvas.addEventListener("pointerup", stop);
+    canvas.addEventListener("pointerleave", stop);
+    setInterval(() => { if (holding) splat(hx, hy, 8 + Math.random() * 10); }, 90);
+    document.getElementById("clear").addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+    document.getElementById("save").addEventListener("click", () => {
+      if (saveDrawingFromCanvas(canvas, "물감놀이")) showToast("저장됐어요! 디지털 드로잉에서 볼 수 있어요 🎨");
+    });
+  </script>
+</body>
+</html>

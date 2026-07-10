@@ -1,0 +1,37 @@
+:root { --ink: #111; --paper: #fdfcf8; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-serif; color: var(--ink); background: #fff; }
+
+.scene { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
+
+/* ===== 무대: 배경 이미지가 크기를 결정 =====
+   배경 비율 2360:1640(≈1.44:1). 가로(vw)뿐 아니라 세로(vh)에도 맞춰
+   전체가 화면에 들어오게 함 → 핸드폰 가로모드에서도 잘림 없이 보임 */
+.stage { position: relative; display: inline-block; width: min(96vw, calc(92vh * 1.44), 1200px); line-height: 0; }
+@supports (height: 100dvh) {
+  .stage { width: min(96vw, calc(92dvh * 1.44), 1200px); }
+}
+.bg { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+
+/* 오브젝트 오버레이: 전부 배경과 같은 크기로 겹쳐 얹힘. 클릭 판정은 JS가 픽셀로 처리 */
+.layer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  transition: transform .15s ease, filter .15s ease;
+  transform-origin: center;
+}
+.layer.hot { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.28)); }
+
+/* 클릭 캡처용 투명 오버레이 (stage 전체를 덮음) */
+.hit { position: absolute; inset: 0; cursor: default; }
+
+/* 마우스 올린 오브젝트 이름표 */
+.tooltip {
+  position: fixed; z-index: 60; pointer-events: none;
+  background: var(--paper); color: var(--ink);
+  font-family: "Gaegu", sans-serif; font-size: 18px; line-height: 1.2;
+  padding: 4px 12px; border: 2px solid var(--ink);
+  border-radius: 14px 14px 14px 2px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  transform: translate(-50%, -130%) rotate(-3deg); white-space: nowrap;
+}
+.tooltip[hidden] { display: none; }
