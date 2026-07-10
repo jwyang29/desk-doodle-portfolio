@@ -1,0 +1,6 @@
+# 여기에 갤러리 이미지를 올려주세요
+
+- 사진(카메라): photo1.jpg, photo2.jpg, photo3.jpg ...
+- 드로잉(아이패드): assets/drawings/ 폴더에 draw1.png, draw2.png ...
+
+번호는 1부터 순서대로. 확장자는 jpg/png/webp 가능.

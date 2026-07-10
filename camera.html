@@ -11,15 +11,30 @@
   <div class="wrap">
     <a class="back" href="index.html">← 책상으로</a>
     <h1>내가 찍은 사진 📷</h1>
-    <p class="sub">좋아하는 순간들. (사진은 나중에 채워 넣기)</p>
-    <div class="grid">
-      <figure><div class="thumb">photo 1</div><figcaption>바다</figcaption></figure>
-      <figure><div class="thumb">photo 2</div><figcaption>노을</figcaption></figure>
-      <figure><div class="thumb">photo 3</div><figcaption>골목</figcaption></figure>
-      <figure><div class="thumb">photo 4</div><figcaption>산책</figcaption></figure>
-      <figure><div class="thumb">photo 5</div><figcaption>하늘</figcaption></figure>
-      <figure><div class="thumb">photo 6</div><figcaption>여행</figcaption></figure>
-    </div>
+    <p class="sub">좋아하는 순간들.</p>
+    <div class="grid" id="grid"></div>
   </div>
+  <script src="gallery.js"></script>
+  <script>
+    const grid = document.getElementById("grid");
+    probeImages("assets/photos/photo", IMG_EXTS, (list) => {
+      if (!list.length) {
+        grid.innerHTML = '<p class="empty">아직 사진이 없어요. assets/photos/ 에 photo1.jpg, photo2.jpg … 로 올려주세요.</p>';
+        return;
+      }
+      list.forEach((src, i) => {
+        const fig = document.createElement("figure");
+        const img = document.createElement("img");
+        img.className = "thumb-photo";
+        img.src = src;
+        img.alt = "사진 " + (i + 1);
+        img.loading = "lazy";
+        const cap = document.createElement("figcaption");
+        cap.textContent = "사진 " + (i + 1);
+        fig.append(img, cap);
+        grid.appendChild(fig);
+      });
+    });
+  </script>
 </body>
 </html>

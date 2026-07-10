@@ -11,27 +11,43 @@
   <div class="wrap">
     <a class="back" href="index.html">← 책상으로</a>
     <h1>디지털 드로잉 🎨</h1>
-    <p class="sub">낙서장과 물감 놀이에서 저장한 그림들이 여기 모여요.</p>
+    <p class="sub">직접 올린 그림과, 낙서장·물감 놀이에서 저장한 그림들이 여기 모여요.</p>
     <div class="grid" id="grid"></div>
   </div>
   <script src="storage.js"></script>
+  <script src="gallery.js"></script>
   <script>
     const grid = document.getElementById("grid");
+    let uploaded = [];   // assets/drawings/ 에서 자동 로드된 파일들
     function fmt(iso) {
       const d = new Date(iso);
       return (d.getMonth() + 1) + "/" + d.getDate();
     }
     function render() {
-      const list = getDrawings();
+      const saved = getDrawings();
       grid.innerHTML = "";
-      if (!list.length) {
+      if (!uploaded.length && !saved.length) {
         const p = document.createElement("p");
         p.className = "empty";
-        p.textContent = "아직 저장된 그림이 없어요. 책상의 낙서장✏️이나 물감🖌️에서 그린 뒤 ‘저장’을 눌러보세요!";
+        p.textContent = "아직 그림이 없어요. assets/drawings/ 에 draw1.png … 로 올리거나, 낙서장✏️·물감🖌️에서 그린 뒤 ‘저장’을 눌러보세요!";
         grid.appendChild(p);
         return;
       }
-      list.forEach((d) => {
+      // 1) 직접 올린 그림 파일
+      uploaded.forEach((src, i) => {
+        const fig = document.createElement("figure");
+        const img = document.createElement("img");
+        img.className = "thumb-img";
+        img.src = src;
+        img.alt = "드로잉 " + (i + 1);
+        img.loading = "lazy";
+        const cap = document.createElement("figcaption");
+        cap.textContent = "드로잉 " + (i + 1);
+        fig.append(img, cap);
+        grid.appendChild(fig);
+      });
+      // 2) 낙서장/물감놀이에서 저장한 그림 (localStorage)
+      saved.forEach((d) => {
         const fig = document.createElement("figure");
         const img = document.createElement("img");
         img.className = "thumb-img";
@@ -51,6 +67,8 @@
       });
     }
     render();
+    // assets/drawings/ 자동 탐색 후 다시 그리기
+    probeImages("assets/drawings/draw", IMG_EXTS, (list) => { uploaded = list; render(); });
     // 다른 탭/창에서 저장돼도 반영
     window.addEventListener("storage", render);
   </script>

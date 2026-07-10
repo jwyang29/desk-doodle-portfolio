@@ -38,6 +38,7 @@ figure:nth-child(even) { --t: 1.5deg; }
   color: #999; font-size: 15px; text-align: center;
   background: repeating-linear-gradient(45deg,#f2f2f2,#f2f2f2 10px,#e8e8e8 10px,#e8e8e8 20px); }
 .thumb-img { width: 100%; aspect-ratio: 4/3; border-radius: 6px; object-fit: contain; background: #fff; display: block; }
+.thumb-photo { width: 100%; aspect-ratio: 4/3; border-radius: 6px; object-fit: cover; background: #eee; display: block; }
 figcaption { text-align: center; font-size: 17px; padding-top: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .del { border: 2px solid var(--ink); background: #fff; border-radius: 999px; width: 26px; height: 26px; font-size: 13px; cursor: pointer; line-height: 1; padding: 0; }
 .del:hover { background: #ffe1e1; }
