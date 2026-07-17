@@ -22,6 +22,23 @@ html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-s
 }
 .layer.hot { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.28)); }
 
+/* 꼬리: 평소 부드럽게 살랑살랑 (회전축 = 꼬리 밑동) */
+.layer.sway { transform-origin: 7.3% 64%; animation: sway 3.4s ease-in-out infinite; }
+@keyframes sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3.5deg); }
+}
+@media (prefers-reduced-motion: reduce) { .layer.sway { animation: none; } }
+
+/* 고양이: tail 클릭 시 왼쪽에서 통통 튀어나옴 */
+.cat-pop {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; pointer-events: none;
+  opacity: 0; transform: translateX(-11%) scale(0.94); transform-origin: 8% 62%;
+  transition: transform .5s cubic-bezier(.34, 1.56, .64, 1), opacity .28s ease;
+}
+.cat-pop.show { opacity: 1; transform: translateX(0) scale(1); }
+
 /* 클릭 캡처용 투명 오버레이 (stage 전체를 덮음) */
 .hit { position: absolute; inset: 0; cursor: default; }
 

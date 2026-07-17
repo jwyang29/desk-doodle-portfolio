@@ -4,9 +4,11 @@
    위치는 이미지 안에 이미 그려져 있으므로 좌표를 따로 줄 필요가 없고,
    JS가 실제 그림(불투명 픽셀) 위를 눌렀는지 판정해서 페이지로 넘깁니다.
 
-     img   : assets/ 안의 PNG 파일명
-     label : 마우스 올렸을 때 이름표
-     page  : 클릭 시 이동할 페이지
+     img    : assets/ 안의 PNG 파일명
+     label  : 마우스 올렸을 때 이름표
+     page   : 클릭 시 이동할 페이지
+     action : 페이지 이동 대신 특수 동작 ('cat' = 고양이 튀어나오기)
+     sway   : true 면 평소에 부드럽게 흔들림
    배열 순서 = 겹침 순서(뒤쪽이 위). 겹치는 부분은 위쪽이 우선 클릭됩니다.
    ========================================================================= */
 const OBJECTS = [
@@ -15,6 +17,7 @@ const OBJECTS = [
   { img: "camera.png",     label: "내가 찍은 사진 📷", page: "camera.html" },
   { img: "watercolor.png", label: "물감 놀이 🖌️",     page: "watercolor.html" },
   { img: "sketchbook.png", label: "낙서장 ✏️",        page: "sketchbook.html" },
+  { img: "tail.png",       label: "쓰다듬기 🐾",       action: "cat", sway: true },
 ];
 
 const ALPHA_THRESHOLD = 20;   // 이 값보다 불투명해야 클릭으로 인정
@@ -28,7 +31,7 @@ let ready = 0;
 
 OBJECTS.forEach((obj) => {
   const img = new Image();
-  img.className = "layer";
+  img.className = "layer" + (obj.sway ? " sway" : "");
   img.alt = obj.label;
   img.src = "assets/" + obj.img;
   stage.appendChild(img);
@@ -47,6 +50,17 @@ OBJECTS.forEach((obj) => {
     ready++;
   });
 });
+
+/* 고양이 팝업 레이어 (tail 클릭 시 왼쪽에서 튀어나옴). cat.png는 나중에 추가 */
+const cat = document.createElement("img");
+cat.className = "cat-pop";
+cat.id = "cat";
+cat.alt = "";
+cat.src = "assets/cat.png";
+// cat.png가 아직 없으면 깨진 아이콘이 뜨지 않게 숨김. 파일 추가되면 자동으로 보임.
+cat.addEventListener("error", () => { cat.dataset.missing = "1"; cat.style.display = "none"; });
+cat.addEventListener("load", () => { cat.style.display = ""; delete cat.dataset.missing; });
+function toggleCat() { if (cat.dataset.missing) return; cat.classList.toggle("show"); }
 
 /* 클릭 캡처용 투명 레이어 */
 const hit = document.createElement("div");
@@ -99,8 +113,10 @@ hit.addEventListener("mouseleave", () => {
   tooltip.hidden = true;
 });
 
-/* 클릭: 해당 오브젝트 페이지로 이동 */
+/* 클릭: 특수 동작 or 페이지 이동 */
 hit.addEventListener("click", (e) => {
   const rec = pick(e.clientX, e.clientY);
-  if (rec) window.location.href = rec.obj.page;
+  if (!rec) return;
+  if (rec.obj.action === "cat") return toggleCat();
+  if (rec.obj.page) window.location.href = rec.obj.page;
 });
