@@ -17,7 +17,7 @@ const OBJECTS = [
   { img: "camera.png",     label: "내가 찍은 사진 📷", page: "camera.html" },
   { img: "watercolor.png", label: "물감 놀이 🖌️",     page: "watercolor.html" },
   { img: "sketchbook.png", label: "낙서장 ✏️",        page: "sketchbook.html" },
-  { img: "tail.png",       label: "쓰다듬기 🐾",       action: "cat", sway: true },
+  { img: "tail.png",       label: "만져볼까?",         action: "cat", sway: true },
 ];
 
 const ALPHA_THRESHOLD = 20;   // 이 값보다 불투명해야 클릭으로 인정
@@ -60,7 +60,40 @@ cat.src = "assets/cat.png";
 // cat.png가 아직 없으면 깨진 아이콘이 뜨지 않게 숨김. 파일 추가되면 자동으로 보임.
 cat.addEventListener("error", () => { cat.dataset.missing = "1"; cat.style.display = "none"; });
 cat.addEventListener("load", () => { cat.style.display = ""; delete cat.dataset.missing; });
-function toggleCat() { if (cat.dataset.missing) return; cat.classList.toggle("show"); }
+stage.appendChild(cat);
+
+// tail 레이어(흔들리는 이미지) 참조
+const tailEl = (layers.find((l) => l.obj.sway) || {}).el || null;
+
+/* 꼬리 클릭 시퀀스:
+   1~2번째 클릭 → 흔들림이 잠깐 빨라졌다가 원상복귀
+   3번째 클릭   → cat.png가 왼쪽에서 등장
+   등장 10초 뒤 → 다시 꼬리 상태로 복귀 */
+let tailClicks = 0, catTimer = null, exciteTimer = null;
+
+function exciteTail() {
+  if (!tailEl) return;
+  tailEl.classList.add("excited");
+  clearTimeout(exciteTimer);
+  exciteTimer = setTimeout(() => tailEl.classList.remove("excited"), 900);
+}
+function showCat() {
+  if (cat.dataset.missing) return;
+  if (tailEl) tailEl.classList.remove("excited");
+  cat.classList.add("show");
+  clearTimeout(catTimer);
+  catTimer = setTimeout(hideCat, 10000);
+}
+function hideCat() {
+  cat.classList.remove("show");
+  tailClicks = 0;
+}
+function pokeTail() {
+  if (cat.classList.contains("show")) return; // 이미 나와 있으면 무시
+  tailClicks++;
+  if (tailClicks >= 3) showCat();
+  else exciteTail();
+}
 
 /* 클릭 캡처용 투명 레이어 */
 const hit = document.createElement("div");
@@ -117,6 +150,6 @@ hit.addEventListener("mouseleave", () => {
 hit.addEventListener("click", (e) => {
   const rec = pick(e.clientX, e.clientY);
   if (!rec) return;
-  if (rec.obj.action === "cat") return toggleCat();
+  if (rec.obj.action === "cat") return pokeTail();
   if (rec.obj.page) window.location.href = rec.obj.page;
 });
