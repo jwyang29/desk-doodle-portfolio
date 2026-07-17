@@ -7,7 +7,9 @@ html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-s
 /* ===== 무대: 배경 이미지가 크기를 결정 =====
    배경 비율 2360:1640(≈1.44:1). 가로(vw)뿐 아니라 세로(vh)에도 맞춰
    전체가 화면에 들어오게 함 → 핸드폰 가로모드에서도 잘림 없이 보임 */
-.stage { position: relative; display: inline-block; width: min(96vw, calc(92vh * 1.44), 1200px); line-height: 0; }
+.stage { position: relative; display: inline-block; width: min(96vw, calc(92vh * 1.44), 1200px); line-height: 0;
+  /* 고양이·꼬리가 책상(background.png 그린 영역) 밖으로 삐져나오면 잘리게 */
+  clip-path: inset(6.6% 5% 3.5% 5.8%); }
 @supports (height: 100dvh) {
   .stage { width: min(96vw, calc(92dvh * 1.44), 1200px); }
 }
@@ -26,6 +28,8 @@ html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-s
 .layer.sway { transform-origin: 7.3% 64%; animation: sway 3.4s ease-in-out infinite; }
 /* 클릭 반응: 흔들림이 잠깐 빨라짐 */
 .layer.sway.excited { animation-duration: 0.4s; }
+/* 고양이가 나와 있는 동안 꼬리는 숨김 */
+.layer.sway.cat-out { opacity: 0; transition: opacity .2s ease; }
 @keyframes sway {
   0%, 100% { transform: rotate(-3deg); }
   50%      { transform: rotate(3.5deg); }

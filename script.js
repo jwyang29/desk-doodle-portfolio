@@ -79,13 +79,14 @@ function exciteTail() {
 }
 function showCat() {
   if (cat.dataset.missing) return;
-  if (tailEl) tailEl.classList.remove("excited");
+  if (tailEl) { tailEl.classList.remove("excited"); tailEl.classList.add("cat-out"); } // 꼬리 숨김
   cat.classList.add("show");
   clearTimeout(catTimer);
   catTimer = setTimeout(hideCat, 10000);
 }
 function hideCat() {
   cat.classList.remove("show");
+  if (tailEl) tailEl.classList.remove("cat-out"); // 꼬리 복귀
   tailClicks = 0;
 }
 function pokeTail() {
