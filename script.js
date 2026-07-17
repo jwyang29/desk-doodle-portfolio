@@ -18,6 +18,7 @@ const OBJECTS = [
   { img: "watercolor.png", label: "물감 놀이 🖌️",     page: "watercolor.html" },
   { img: "sketchbook.png", label: "낙서장 ✏️",        page: "sketchbook.html" },
   { img: "tail.png",       label: "만져볼까?",         action: "cat", sway: true },
+  { img: "thread.png",     label: "실 당겨보기 🧶",     action: "thread" },
 ];
 
 const ALPHA_THRESHOLD = 20;   // 이 값보다 불투명해야 클릭으로 인정
@@ -125,6 +126,7 @@ function pick(clientX, clientY) {
 /* 마우스 이동: 커서 + 이름표 + 살짝 강조 */
 let hovered = null;
 hit.addEventListener("mousemove", (e) => {
+  if (drag) return;                 // 드래그 중엔 툴팁/호버 억제
   const rec = pick(e.clientX, e.clientY);
   if (rec !== hovered) {
     if (hovered) hovered.el.classList.remove("hot");
@@ -147,10 +149,64 @@ hit.addEventListener("mouseleave", () => {
   tooltip.hidden = true;
 });
 
-/* 클릭: 특수 동작 or 페이지 이동 */
+/* 클릭: 특수 동작 or 페이지 이동 (드래그 직후 클릭은 무시) */
+let justDragged = false;
 hit.addEventListener("click", (e) => {
+  if (justDragged) { justDragged = false; return; }
   const rec = pick(e.clientX, e.clientY);
   if (!rec) return;
   if (rec.obj.action === "cat") return pokeTail();
+  if (rec.obj.action === "thread") return;      // 실은 드래그로만 동작
   if (rec.obj.page) window.location.href = rec.obj.page;
 });
+
+/* ── 실(thread) 당기기: 잡고 움직이면 실이 따라오고, 움직인 만큼 고양이가
+   왼쪽→오른쪽으로 서서히 등장. 놓으면(클릭 해제/터치 멈춤) 원상복구 ── */
+const threadEl = (layers.find((l) => l.obj.action === "thread") || {}).el || null;
+const PULL_FULL = 0.55;   // stage 가로의 이만큼 끌면 고양이 완전히 등장(클수록 천천히)
+const CAT_SHIFT = 30;     // 고양이가 숨을 때 왼쪽으로 밀리는 정도(%)
+let drag = null;
+
+function setCatReveal(p) {
+  cat.style.opacity = String(p);
+  cat.style.transform = "translateX(" + (-CAT_SHIFT * (1 - p)) + "%) scale(" + (0.94 + 0.06 * p) + ")";
+  if (tailEl) tailEl.classList.toggle("cat-out", p > 0.02);
+}
+
+hit.addEventListener("pointerdown", (e) => {
+  if (cat.dataset.missing || !threadEl) return;
+  const rec = pick(e.clientX, e.clientY);
+  if (!rec || rec.obj.action !== "thread") return;
+  drag = { x0: e.clientX, y0: e.clientY, moved: false };
+  threadEl.style.transition = "none";
+  cat.style.transition = "none";           // 드래그 중엔 즉각 반응
+  tooltip.hidden = true;
+  try { hit.setPointerCapture(e.pointerId); } catch (_) {}
+  e.preventDefault();
+});
+
+hit.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+  threadEl.style.transform = "translate(" + dx + "px," + dy + "px)"; // 실이 손을 따라옴
+  const r = stage.getBoundingClientRect();
+  const dist = Math.hypot(dx, dy);
+  const p = Math.max(0, Math.min(1, dist / (r.width * PULL_FULL)));
+  setCatReveal(p);
+});
+
+function endDrag() {
+  if (!drag) return;
+  if (drag.moved) { justDragged = true; setTimeout(() => { justDragged = false; }, 0); }
+  // 부드럽게 원상복구
+  threadEl.style.transition = "transform .6s cubic-bezier(.34,1.4,.6,1)";
+  threadEl.style.transform = "";
+  cat.style.transition = "";     // 기본 트랜지션으로 스르륵 복귀
+  cat.style.opacity = "";
+  cat.style.transform = "";
+  if (tailEl) tailEl.classList.remove("cat-out");
+  drag = null;
+}
+hit.addEventListener("pointerup", endDrag);
+hit.addEventListener("pointercancel", endDrag);
