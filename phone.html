@@ -11,18 +11,28 @@
   <div class="wrap">
     <a class="back" href="index.html">← 책상으로</a>
     <h1>친구랑 톡 💬</h1>
-    <p class="sub">핸드폰을 열어봤다. 오늘의 대화.</p>
-    <div class="phone">
-      <div class="screen">
-        <div class="cname">— 짝꿍 🐣 —</div>
-        <div class="bubble them">야 포트폴리오 사이트 다 만들었어??</div>
-        <div class="bubble me">ㅇㅇ 책상 두들 컨셉으로 하는 중ㅋㅋ</div>
-        <div class="bubble them">오 대박 완성되면 링크 보내조</div>
-        <div class="bubble me">지금 니가 보고 있는 게 그거야 😎</div>
-        <div class="bubble them">?!?!</div>
-        <div class="bubble them">천잰데?</div>
+
+    <!-- 잠금화면: 이미지 누르면 채팅 열림 -->
+    <div id="lock" class="lockwrap">
+      <img src="assets/phone_00.png" class="lockimg" alt="잠금화면" />
+      <p class="tap-hint">화면을 톡 누르면 열려요 👆</p>
+    </div>
+
+    <!-- 채팅 (두들 폰) -->
+    <div id="chat" class="chatphone" hidden>
+      <div class="chat-header">
+        <span class="chat-avatar">❤️</span>
+        <span id="chatName">친구</span>
+        <span class="chat-status">지금 접속 중</span>
       </div>
+      <div class="chat-log" id="log" aria-live="polite"></div>
+      <form class="chat-input" id="form" autocomplete="off">
+        <input id="msg" type="text" placeholder="메시지 입력…" aria-label="메시지 입력" />
+        <button type="submit" id="send">보내기</button>
+      </form>
     </div>
   </div>
+
+  <script src="chat.js"></script>
 </body>
 </html>
