@@ -5,7 +5,7 @@
    나중에 진짜 AI로 바꾸려면 CHAT_CONFIG.apiEndpoint만 채우면 됩니다.
    ========================================================================= */
 const CHAT_CONFIG = {
-  friendName: "수흔",
+  friendName: "친구",
   greeting: "왔어?? ㅋㅋ 뭐하고 있었어",
   apiEndpoint: "", // 진짜 AI로 바꾸려면 프록시 URL
   persona: "너는 사용자의 친한 친구 '수흔'이야. 한국어 반말, 애교 많고 다정함. ㅋㅋㅋ, ㅜㅜ, !!! 자주 쓰고 가끔 오타. 자주 아프고(감기) 학원/학교 얘기 많이 함. 짧게 여러 번 나눠서 답함.",
@@ -205,14 +205,71 @@ function showTyping() {
   return t;
 }
 
+/* ---------------- 이모티콘 ---------------- */
+const emojiTray = document.getElementById("emojiTray");
+const emojiBtn = document.getElementById("emojiBtn");
+let EMOJIS = []; // 존재하는 이모티콘 id 목록
+
+/* assets/emoji_00.png, emoji_01.png … 자동 탐색 (연속 번호가 끊기면 종료) */
+(function probeEmojis(cb) {
+  const found = [];
+  (function tryIdx(n) {
+    if (n > 40) return cb(found);
+    const id = "emoji_" + String(n).padStart(2, "0");
+    const img = new Image();
+    img.onload = () => { found.push(id); tryIdx(n + 1); };
+    img.onerror = () => cb(found);
+    img.src = "assets/" + id + ".png?v=" + Date.now();
+  })(0);
+})((ids) => {
+  EMOJIS = ids;
+  if (!ids.length) return;
+  emojiBtn.hidden = false;
+  ids.forEach((id) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "emoji-item";
+    const img = document.createElement("img"); img.src = "assets/" + id + ".png"; img.alt = id;
+    b.appendChild(img);
+    b.addEventListener("click", () => { emojiTray.hidden = true; sendSticker(id); });
+    emojiTray.appendChild(b);
+  });
+});
+emojiBtn.addEventListener("click", () => { emojiTray.hidden = !emojiTray.hidden; });
+
+/* 이모티콘(스티커) 말풍선 */
+function addSticker(who, id) {
+  const b = document.createElement("div");
+  b.className = "bubble sticker " + (who === "user" ? "me" : "them");
+  const img = document.createElement("img"); img.src = "assets/" + id + ".png"; img.alt = "이모티콘";
+  b.appendChild(img);
+  log.appendChild(b);
+  const c = EMOJI_CONTEXT[id];
+  // 히스토리엔 이모티콘 의미를 텍스트로 남겨, 챗봇이 반응할 수 있게
+  history.push({ role: who, text: "(" + (c ? c.context + " " + (c.keywords || []).join(" ") : "이모티콘") + ")" });
+  log.scrollTop = log.scrollHeight;
+}
+
+/* 내 메시지 상황에 맞는 이모티콘 고르기 (컨텍스트 keywords 매칭) */
+const recentEmoji = [];
+function pickBotEmoji() {
+  const lastUser = [...history].reverse().find((m) => m.role === "user");
+  const text = (lastUser && lastUser.text) || "";
+  const matches = EMOJIS.filter((id) => {
+    const c = EMOJI_CONTEXT[id];
+    return c && c.keywords && c.keywords.some((k) => text.includes(k));
+  });
+  if (!matches.length) return null;
+  const fresh = matches.filter((id) => !recentEmoji.includes(id));
+  const arr = fresh.length ? fresh : matches;
+  const pick = arr[Math.floor(Math.random() * arr.length)];
+  recentEmoji.push(pick); if (recentEmoji.length > 5) recentEmoji.shift();
+  return pick;
+}
+
 /* ---------------- 전송 ---------------- */
 let busy = false;
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = input.value.trim();
-  if (!text || busy) return;
-  addBubble("user", text);
-  input.value = "";
+
+async function respond() {
   busy = true;
   sendBtn.disabled = true;
   try {
@@ -223,6 +280,14 @@ form.addEventListener("submit", async (e) => {
       t.remove();
       addBubble("friend", replies[i]);
     }
+    // 상황에 맞는 이모티콘 가끔 덧붙이기
+    const eid = pickBotEmoji();
+    if (eid && Math.random() < 0.45) {
+      const t = showTyping();
+      await wait(600);
+      t.remove();
+      addSticker("friend", eid);
+    }
   } catch (err) {
     addBubble("friend", "(지금 답장을 못 했어… 잠시 후 다시 ㅠ)");
     console.error(err);
@@ -231,7 +296,22 @@ form.addEventListener("submit", async (e) => {
     sendBtn.disabled = false;
     input.focus();
   }
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text || busy) return;
+  addBubble("user", text);
+  input.value = "";
+  respond();
 });
+
+function sendSticker(id) {
+  if (busy) return;
+  addSticker("user", id);
+  respond();
+}
 
 /* ---------------- 응답 엔진 ---------------- */
 async function getFriendReply(hist) {

@@ -29,7 +29,9 @@
           <span id="chatName">친구</span>
         </div>
         <div class="chat-log" id="log" aria-live="polite"></div>
+        <div class="emoji-tray" id="emojiTray" hidden></div>
         <form class="chat-input" id="form" autocomplete="off">
+          <button type="button" id="emojiBtn" class="emoji-btn" aria-label="이모티콘" hidden>🙂</button>
           <input id="msg" type="text" placeholder="메시지…" aria-label="메시지 입력" />
           <button type="submit" id="send">↑</button>
         </form>
@@ -37,6 +39,7 @@
     </div>
   </div>
 
+  <script src="emoji-context.js"></script>
   <script src="chat.js"></script>
 </body>
 </html>
