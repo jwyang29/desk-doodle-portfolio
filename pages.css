@@ -51,34 +51,35 @@ figcaption { text-align: center; font-size: 17px; padding-top: 6px; display: fle
   opacity: 0; transition: opacity .25s ease, transform .25s ease; z-index: 100; pointer-events: none; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-/* 잠금화면 */
-.lockwrap { text-align: center; }
-.lockimg {
-  width: min(440px, 82vw); height: auto; display: block; margin: 0 auto; cursor: pointer;
-  transition: transform .18s ease, filter .18s ease;
-  filter: drop-shadow(4px 6px 6px rgba(0,0,0,0.12));
+/* 폰 크롭: 큰 캔버스 안의 폰만 잘라서 크게 보여줌 (외곽박스 좌35 상23.5 폭31.33 높65.95) */
+/* 종횡비는 폰 외곽박스의 실제 픽셀비 (폭 0.3133*2360=739 : 높이 0.6595*1640=1082) */
+.phone-crop { position: relative; margin: 0 auto; overflow: hidden; aspect-ratio: 739 / 1082; }
+.phone-frame-img {
+  position: absolute; width: 319.2%; left: -111.7%; top: -35.63%; height: auto;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
 }
-.lockimg:hover { transform: scale(1.02) rotate(-0.6deg); }
+
+/* 잠금화면: 폰 크게(≈4배) */
+.lockwrap { text-align: center; }
+.lock-crop { width: min(540px, 92vw); cursor: pointer; transition: transform .18s ease; }
+.lock-crop:hover { transform: scale(1.02) rotate(-0.5deg); }
 .tap-hint { font-size: 18px; color: #666; transform: rotate(-1.5deg); }
 
-/* 채팅 (두들 폰) */
-.chatphone {
-  max-width: 400px; margin: 0 auto;
-  background: #fff; border: 4px solid var(--ink); border-radius: 40px;
-  padding: 16px 14px; box-shadow: 7px 9px 0 rgba(0,0,0,0.15);
-  animation: pop .28s ease;
+/* 채팅: 프레임은 phone_01 이미지, 내부 UI는 화면 영역에 얹음 */
+.chat-crop { width: min(470px, 94vw); animation: pop .28s ease; }
+.phone-screen-area {
+  position: absolute; left: 11.5%; top: 13.5%; width: 76.5%; height: 71.5%;
+  display: flex; flex-direction: column;
 }
 .chat-header {
-  display: flex; align-items: center; gap: 8px;
-  border-bottom: 2px dashed var(--ink); padding: 2px 6px 10px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 7px;
+  border-bottom: 2px dashed var(--ink); padding: 0 2px 7px; margin-bottom: 6px;
 }
-.chat-avatar { font-size: 22px; }
-#chatName { font-weight: 700; font-size: 20px; }
-.chat-status { margin-left: auto; font-size: 14px; color: #2b8a3e; }
-.chat-status::before { content: "●"; font-size: 10px; margin-right: 4px; vertical-align: middle; }
+.chat-avatar { font-size: 19px; }
+#chatName { font-weight: 700; font-size: 18px; }
 .chat-log {
-  height: 52vh; min-height: 300px; max-height: 520px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 9px; padding: 6px 4px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 4px 2px;
 }
 .chat-log .bubble { animation: rise .25s ease; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -92,16 +93,17 @@ figcaption { text-align: center; font-size: 17px; padding-top: 6px; display: fle
 .typing i:nth-child(3) { animation-delay: .36s; }
 @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 
-.chat-input { display: flex; gap: 8px; margin-top: 12px; }
+.phone-screen-area .bubble { font-size: 15px; padding: 7px 11px; max-width: 82%; }
+.chat-input { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
 .chat-input input {
-  flex: 1; font-family: inherit; font-size: 16px; color: var(--ink);
-  border: 2px solid var(--ink); border-radius: 16px; padding: 9px 14px; background: #fdfdfb;
+  flex: 1; min-width: 0; font-family: inherit; font-size: 15px; color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 14px; padding: 7px 11px; background: #fdfdfb;
 }
 .chat-input input:focus { outline: none; box-shadow: 2px 2px 0 rgba(0,0,0,0.15); }
 .chat-input button {
-  font-family: inherit; font-size: 16px; cursor: pointer;
-  border: 2px solid var(--ink); border-radius: 16px; background: #fee75c; padding: 9px 16px;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  flex: none; width: 38px; height: 38px; font-family: inherit; font-size: 20px; font-weight: 700;
+  cursor: pointer; border: 2px solid var(--ink); border-radius: 50%; background: #fee75c;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.2); line-height: 1; padding: 0;
 }
 .chat-input button:hover { background: #ffe12e; }
 .chat-input button:disabled { opacity: .5; cursor: default; box-shadow: none; }

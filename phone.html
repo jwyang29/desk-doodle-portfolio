@@ -12,24 +12,28 @@
     <a class="back" href="index.html">← 책상으로</a>
     <h1>친구랑 톡 💬</h1>
 
-    <!-- 잠금화면: 이미지 누르면 채팅 열림 -->
+    <!-- 잠금화면: 폰(phone_00) 크게. 누르면 채팅 열림 -->
     <div id="lock" class="lockwrap">
-      <img src="assets/phone_00.png" class="lockimg" alt="잠금화면" />
+      <div class="phone-crop lock-crop">
+        <img src="assets/phone_00.png" class="phone-frame-img" alt="잠금화면" />
+      </div>
       <p class="tap-hint">화면을 톡 누르면 열려요 👆</p>
     </div>
 
-    <!-- 채팅 (두들 폰) -->
-    <div id="chat" class="chatphone" hidden>
-      <div class="chat-header">
-        <span class="chat-avatar">❤️</span>
-        <span id="chatName">친구</span>
-        <span class="chat-status">지금 접속 중</span>
+    <!-- 채팅: 프레임은 phone_01 이미지, 내부 UI는 두들 디자인 -->
+    <div id="chat" class="phone-crop chat-crop" hidden>
+      <img src="assets/phone_01.png" class="phone-frame-img" alt="" />
+      <div class="phone-screen-area">
+        <div class="chat-header">
+          <span class="chat-avatar">❤️</span>
+          <span id="chatName">친구</span>
+        </div>
+        <div class="chat-log" id="log" aria-live="polite"></div>
+        <form class="chat-input" id="form" autocomplete="off">
+          <input id="msg" type="text" placeholder="메시지…" aria-label="메시지 입력" />
+          <button type="submit" id="send">↑</button>
+        </form>
       </div>
-      <div class="chat-log" id="log" aria-live="polite"></div>
-      <form class="chat-input" id="form" autocomplete="off">
-        <input id="msg" type="text" placeholder="메시지 입력…" aria-label="메시지 입력" />
-        <button type="submit" id="send">보내기</button>
-      </form>
     </div>
   </div>
 
