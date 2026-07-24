@@ -61,7 +61,7 @@ figcaption { text-align: center; font-size: 17px; padding-top: 6px; display: fle
 
 /* 잠금화면: 폰 크게(≈4배) */
 .lockwrap { text-align: center; }
-.lock-crop { width: min(162px, 60vw); cursor: pointer; transition: transform .18s ease; }
+.lock-crop { width: min(300px, 92vw); cursor: pointer; transition: transform .18s ease; }
 .lock-crop:hover { transform: scale(1.02) rotate(-0.5deg); }
 .tap-hint { font-size: 18px; color: #666; transform: rotate(-1.5deg); }
 
