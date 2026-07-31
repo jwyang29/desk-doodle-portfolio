@@ -9,16 +9,26 @@
   <style>
     body { background: #f3efe6; }
     .photo-nav { display: flex; gap: 8px; flex-wrap: wrap; }
-    .big-polaroid {
-      max-width: 380px; margin: 26px auto 0; background: #fff; padding: 18px 18px 0;
-      border-radius: 4px; box-shadow: 5px 12px 24px rgba(60,45,30,0.3);
-      transform: rotate(-1.5deg);
-    }
-    .big-polaroid .photo { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; background: #e9e4da; display: flex; align-items: center; justify-content: center; }
-    .big-polaroid .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .big-polaroid .photo .ph { color: #b3a89a; }
-    .big-polaroid .cap { font-family: "Caveat", "Gaegu", cursive; font-size: 26px; text-align: center; padding: 12px 4px 18px; color: #4a4038; }
-    .todo { text-align: center; color: #777; font-size: 18px; margin-top: 22px; transform: rotate(-1deg); }
+    .scrap { max-width: 560px; margin: 20px auto 0; text-align: center; }
+
+    /* 꾸미기 보드 */
+    .board { position: relative; width: min(520px, 94vw); margin: 0 auto; touch-action: none; }
+    .board-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
+    .board-photo { position: absolute; overflow: hidden; background: #eee; }
+    .board-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .board-photo .ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #b3a89a; font-size: 14px; background: repeating-linear-gradient(45deg,#f2f2f2,#f2f2f2 8px,#e8e8e8 8px,#e8e8e8 16px); }
+
+    /* 붙인 스티커 */
+    .placed { position: absolute; width: 22%; height: auto; cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; z-index: 5; }
+    .placed.dragging { cursor: grabbing; transform: scale(1.08); filter: drop-shadow(0 5px 6px rgba(0,0,0,0.3)); z-index: 60; }
+
+    /* 스티커 트레이 */
+    .tray-wrap { margin-top: 18px; }
+    .tray { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 10px; background: #fff; border: 2px dashed var(--ink); border-radius: 16px; }
+    .tray-sticker { width: 62px; height: 62px; object-fit: contain; cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; transition: transform .12s ease; }
+    .tray-sticker:hover { transform: scale(1.12) rotate(-4deg); }
+    .hint2 { font-size: 15px; color: #777; margin: 10px 2px 0; }
+    .loading { color: #999; padding: 30px; }
   </style>
 </head>
 <body>
@@ -27,28 +37,148 @@
       <a class="back" href="camera.html">← 사진들로</a>
       <a class="back" href="index.html">책상으로</a>
     </div>
-    <div class="big-polaroid">
-      <div class="photo"><img id="pic" alt="" /></div>
-      <div class="cap" id="cap">사진</div>
+
+    <div class="scrap">
+      <div class="board" id="board">
+        <img class="board-bg" id="boardBg" alt="" />
+        <div class="board-photo" id="boardPhoto"><span class="ph">사진</span></div>
+      </div>
+      <div class="tray-wrap">
+        <div class="tray" id="tray"></div>
+        <p class="hint2">🩹 스티커를 <b>보드 위로 드래그</b>해서 붙여보세요! 붙인 뒤에도 옮길 수 있고, 보드 밖으로 빼면 떼어져요.</p>
+      </div>
     </div>
-    <p class="todo">✏️ 이 사진의 이야기는 곧 채워질 예정이에요.</p>
+    <p class="loading" id="loading">불러오는 중…</p>
   </div>
 
   <script src="gallery.js"></script>
   <script>
     const n = Math.max(1, parseInt(new URLSearchParams(location.search).get("n") || "1", 10));
-    document.getElementById("cap").textContent = "사진 " + n;
     document.title = "사진 " + n + " 📷";
-    // photoN 을 확장자 돌려가며 로드
-    const pic = document.getElementById("pic");
-    (function tryExt(i) {
-      if (i >= IMG_EXTS.length) {
-        pic.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: "사진 없음" }));
-        return;
+    const board = document.getElementById("board");
+    const tray = document.getElementById("tray");
+
+    const loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+
+    // 불투명(흰색 아님) 영역의 바운딩박스 계산
+    function contentBBox(img) {
+      const cw = Math.min(600, img.naturalWidth);
+      const ch = Math.round(img.naturalHeight * cw / img.naturalWidth);
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, cw, ch);
+      const d = x.getImageData(0, 0, cw, ch).data;
+      let minx = cw, miny = ch, maxx = 0, maxy = 0, found = false;
+      for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) {
+        const i = (y * cw + xx) * 4;
+        const white = d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240;
+        if (d[i + 3] > 30 && !white) { found = true; if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (y < miny) miny = y; if (y > maxy) maxy = y; }
       }
-      pic.onerror = () => tryExt(i + 1);
-      pic.src = "assets/photos/photo" + n + "." + IMG_EXTS[i] + "?v=" + Date.now();
-    })(0);
+      return found ? { cw, ch, minx, miny, maxx, maxy, data: d } : null;
+    }
+    // bbox 로 잘라 dataURL 로 (원본 해상도에서 크롭)
+    function cropUrl(img, bb, pad, cap) {
+      pad = pad || 2; cap = cap || 700;
+      const sx = img.naturalWidth / bb.cw, sy = img.naturalHeight / bb.ch;
+      const L = Math.max(0, (bb.minx - pad) * sx), T = Math.max(0, (bb.miny - pad) * sy);
+      const W = Math.min(img.naturalWidth - L, (bb.maxx - bb.minx + pad * 2) * sx);
+      const H = Math.min(img.naturalHeight - T, (bb.maxy - bb.miny + pad * 2) * sy);
+      const scale = Math.min(1, cap / W);
+      const c = document.createElement("canvas"); c.width = Math.round(W * scale); c.height = Math.round(H * scale);
+      c.getContext("2d").drawImage(img, L, T, W, H, 0, 0, c.width, c.height);
+      return { url: c.toDataURL("image/png"), w: c.width, h: c.height };
+    }
+    // 보드 안쪽 네모칸(사진 자리) 찾기
+    function innerRect(bb) {
+      const d = bb.data, cw = bb.cw;
+      const dark = (x, y) => { const i = (y * cw + x) * 4; return d[i + 3] > 30 && !(d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240); };
+      const cx = Math.round((bb.minx + bb.maxx) / 2);
+      const cy = Math.round(bb.miny + (bb.maxy - bb.miny) * 0.62);
+      let l = cx; while (l > bb.minx && !dark(l, cy)) l--; l++;
+      let r = cx; while (r < bb.maxx && !dark(r, cy)) r++; r--;
+      let t = cy; while (t > bb.miny && !dark(cx, t)) t--; t++;
+      let b = cy; while (b < bb.maxy && !dark(cx, b)) b++; b--;
+      const W = bb.maxx - bb.minx, H = bb.maxy - bb.miny;
+      return { left: (l - bb.minx) / W, top: (t - bb.miny) / H, width: (r - l) / W, height: (b - t) / H };
+    }
+    const findPhoto = async (num) => {
+      for (const ext of IMG_EXTS) {
+        try { await loadImage("assets/photos/photo" + num + "." + ext + "?v=" + Date.now()); return "assets/photos/photo" + num + "." + ext; } catch (e) {}
+      }
+      return null;
+    };
+
+    /* ---- 드래그 ---- */
+    let active = null, offX = 0, offY = 0;
+    function makePlaced(url) {
+      const el = document.createElement("img");
+      el.className = "placed"; el.src = url; el.draggable = false;
+      board.appendChild(el);
+      el.addEventListener("pointerdown", (e) => startDrag(e, el, false));
+      return el;
+    }
+    function startDrag(e, el, isTray, url) {
+      e.preventDefault();
+      if (isTray) el = makePlaced(url);
+      active = el; el.classList.add("dragging"); board.appendChild(el);
+      const r = el.getBoundingClientRect();
+      offX = isTray ? r.width / 2 : e.clientX - r.left;
+      offY = isTray ? r.height / 2 : e.clientY - r.top;
+      moveTo(e.clientX, e.clientY);
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      el.onpointermove = (ev) => moveTo(ev.clientX, ev.clientY);
+      el.onpointerup = (ev) => endDrag(ev);
+    }
+    function moveTo(cx, cy) {
+      if (!active) return;
+      const br = board.getBoundingClientRect();
+      active.style.left = ((cx - br.left - offX) / br.width * 100) + "%";
+      active.style.top = ((cy - br.top - offY) / br.height * 100) + "%";
+    }
+    function endDrag(ev) {
+      if (!active) return;
+      const br = board.getBoundingClientRect();
+      if (ev.clientX < br.left - 30 || ev.clientX > br.right + 30 || ev.clientY < br.top - 30 || ev.clientY > br.bottom + 30) active.remove();
+      active.classList.remove("dragging");
+      active.onpointermove = null; active.onpointerup = null; active = null;
+    }
+    function addTraySticker(url) {
+      const t = document.createElement("img");
+      t.className = "tray-sticker"; t.src = url; t.draggable = false;
+      t.addEventListener("pointerdown", (e) => startDrag(e, null, true, url));
+      tray.appendChild(t);
+    }
+
+    /* ---- 초기화 ---- */
+    (async () => {
+      try {
+        // 보드
+        const bimg = await loadImage("assets/board.png");
+        const bbb = contentBBox(bimg);
+        const bcrop = cropUrl(bimg, bbb, 2, 1000);
+        board.style.aspectRatio = bcrop.w + " / " + bcrop.h;
+        document.getElementById("boardBg").src = bcrop.url;
+        const inner = innerRect(bbb);
+        const bp = document.getElementById("boardPhoto");
+        // 선 안쪽으로 살짝 여백
+        bp.style.left = (inner.left * 100 + 1) + "%";
+        bp.style.top = (inner.top * 100 + 1) + "%";
+        bp.style.width = (inner.width * 100 - 2) + "%";
+        bp.style.height = (inner.height * 100 - 2) + "%";
+        // 사진
+        const photoUrl = await findPhoto(n);
+        if (photoUrl) bp.innerHTML = '<img alt="사진 ' + n + '">', bp.querySelector("img").src = photoUrl;
+        else bp.innerHTML = '<span class="ph">사진 없음</span>';
+        // 스티커
+        for (let i = 1; i <= 5; i++) {
+          try {
+            const s = await loadImage("assets/sticker" + i + ".png");
+            const bb = contentBBox(s); if (!bb) continue;
+            addTraySticker(cropUrl(s, bb, 3, 500).url);
+          } catch (e) {}
+        }
+      } catch (e) { console.error(e); }
+      document.getElementById("loading").remove();
+    })();
   </script>
 </body>
 </html>
