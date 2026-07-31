@@ -95,7 +95,8 @@
             '<div class="photo"><img loading="lazy" alt="사진 ' + n + '"></div>' +
             '<div class="cap">사진 ' + n + "</div>";
           const img = a.querySelector("img");
-          img.src = src;
+          const deco = localStorage.getItem("deco_" + n); // 꾸민 미리보기가 있으면 그걸로
+          img.src = deco || src;
           img.addEventListener("error", () => { img.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: "사진 없음" })); });
           pins.appendChild(a);
         });
