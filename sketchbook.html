@@ -6,12 +6,22 @@
   <title>낙서장 ✏️</title>
   <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    .tinyhint { font-size: 15px; color: #777; margin: 4px 2px 10px; }
+    .swatch { touch-action: none; }
+    #eraser.active { background: #ffe1e1; outline: 3px solid var(--ink); outline-offset: 2px; }
+    .color-chip {
+      position: fixed; z-index: 200; width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid var(--ink); box-shadow: 2px 2px 0 rgba(0,0,0,0.25);
+      transform: translate(-50%, -50%); pointer-events: none; display: none;
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
     <a class="back" href="index.html">← 책상으로</a>
     <h1>낙서장 ✏️</h1>
-    <p class="sub">마우스로 마음껏 그려보세요.</p>
+    <p class="sub">마우스로 그리고, 팔레트를 도형 안에 떨어뜨려 색을 채워보세요.</p>
     <div class="card">
       <div class="tools">
         <span class="swatch active" style="background:#111" data-color="#111"></span>
@@ -19,39 +29,137 @@
         <span class="swatch" style="background:#f5a524" data-color="#f5a524"></span>
         <span class="swatch" style="background:#2b8a3e" data-color="#2b8a3e"></span>
         <span class="swatch" style="background:#1c7ed6" data-color="#1c7ed6"></span>
+        <span class="swatch" style="background:#9c36b5" data-color="#9c36b5"></span>
+        <button id="eraser">지우개 🩹</button>
         <button id="clear">전체 지우기 🧽</button>
         <button id="save">디지털 드로잉에 저장 💾</button>
       </div>
+      <p class="tinyhint">🎨 색을 <b>탭</b>하면 펜 색이 바뀌고, 팔레트를 도형 안으로 <b>드래그</b>해서 놓으면 색이 채워져요.</p>
       <canvas id="pad" class="pad"></canvas>
     </div>
   </div>
+  <div class="color-chip" id="chip"></div>
   <script src="storage.js"></script>
   <script>
     const canvas = document.getElementById("pad");
-    const ctx = canvas.getContext("2d");
-    let color = "#111", drawing = false;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    let color = "#111", drawing = false, eraser = false, dpr = 1;
+
     function fit() {
       const r = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const img = ctx.getImageData ? null : null; // keep simple; resize clears
+      dpr = window.devicePixelRatio || 1;
       canvas.width = r.width * dpr; canvas.height = r.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = 4;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
     }
     fit();
     window.addEventListener("resize", fit);
+
+    /* ---- 그리기 / 지우개 ---- */
     const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-    canvas.addEventListener("pointerdown", (e) => { drawing = true; const p = pos(e); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(p.x, p.y); });
-    canvas.addEventListener("pointermove", (e) => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
-    const stop = () => (drawing = false);
+    canvas.addEventListener("pointerdown", (e) => {
+      drawing = true;
+      const p = pos(e);
+      ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      applyStrokeStyle();
+      ctx.lineTo(p.x + 0.01, p.y); ctx.stroke(); // 점 찍기
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!drawing) return;
+      const p = pos(e);
+      ctx.lineTo(p.x, p.y); ctx.stroke();
+    });
+    const stop = () => { drawing = false; ctx.globalCompositeOperation = "source-over"; };
     canvas.addEventListener("pointerup", stop);
     canvas.addEventListener("pointerleave", stop);
-    document.querySelectorAll(".swatch").forEach((s) => s.addEventListener("click", () => {
-      color = s.dataset.color;
+    function applyStrokeStyle() {
+      if (eraser) {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+        ctx.lineWidth = 20;
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+      }
+    }
+
+    /* ---- 팔레트: 탭 = 펜 색 선택 / 드래그 = 색 채우기 ---- */
+    const chip = document.getElementById("chip");
+    let start = null, dragging = false;
+    function selectColor(sw) {
+      color = sw.dataset.color; setEraser(false);
       document.querySelectorAll(".swatch").forEach((x) => x.classList.remove("active"));
-      s.classList.add("active");
-    }));
-    document.getElementById("clear").addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+      sw.classList.add("active");
+    }
+    document.querySelectorAll(".swatch").forEach((sw) => {
+      sw.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        start = { x: e.clientX, y: e.clientY, color: sw.dataset.color, sw };
+        dragging = false;
+        try { sw.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+      sw.addEventListener("pointermove", (e) => {
+        if (!start) return;
+        if (!dragging && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) {
+          dragging = true;
+          chip.style.background = start.color; chip.style.display = "block";
+        }
+        if (dragging) { chip.style.left = e.clientX + "px"; chip.style.top = e.clientY + "px"; }
+      });
+      sw.addEventListener("pointerup", (e) => {
+        if (start) {
+          if (dragging) {
+            chip.style.display = "none";
+            const r = canvas.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+              floodFill(Math.round((e.clientX - r.left) * dpr), Math.round((e.clientY - r.top) * dpr), start.color);
+            }
+          } else {
+            selectColor(start.sw);
+          }
+        }
+        start = null; dragging = false;
+      });
+    });
+
+    /* ---- 색 채우기 (플러드 필) ---- */
+    function hexToRgb(h) {
+      const n = parseInt(h.slice(1), 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+    function floodFill(sx, sy, hex) {
+      const w = canvas.width, h = canvas.height;
+      if (sx < 0 || sy < 0 || sx >= w || sy >= h) return;
+      const img = ctx.getImageData(0, 0, w, h), d = img.data;
+      const at = (x, y) => (y * w + x) * 4;
+      const s = at(sx, sy);
+      const tr = d[s], tg = d[s + 1], tb = d[s + 2], ta = d[s + 3];
+      const f = hexToRgb(hex), tol = 60;
+      if (Math.abs(tr - f.r) < 20 && Math.abs(tg - f.g) < 20 && Math.abs(tb - f.b) < 20 && ta > 240) return;
+      const match = (i) => Math.abs(d[i] - tr) <= tol && Math.abs(d[i + 1] - tg) <= tol && Math.abs(d[i + 2] - tb) <= tol && Math.abs(d[i + 3] - ta) <= tol;
+      const stack = [[sx, sy]];
+      while (stack.length) {
+        const [x, y] = stack.pop();
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = at(x, y);
+        if (!match(i)) continue;
+        d[i] = f.r; d[i + 1] = f.g; d[i + 2] = f.b; d[i + 3] = 255;
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    /* ---- 버튼 ---- */
+    function setEraser(on) {
+      eraser = on;
+      document.getElementById("eraser").classList.toggle("active", on);
+    }
+    document.getElementById("eraser").addEventListener("click", () => setEraser(!eraser));
+    document.getElementById("clear").addEventListener("click", () => {
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+    });
     document.getElementById("save").addEventListener("click", () => {
       if (saveDrawingFromCanvas(canvas, "낙서장")) showToast("저장됐어요! 디지털 드로잉에서 볼 수 있어요 🎨");
     });
