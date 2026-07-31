@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사진 📷</title>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pages.css" />
+  <style>
+    body { background: #f3efe6; }
+    .photo-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+    .big-polaroid {
+      max-width: 380px; margin: 26px auto 0; background: #fff; padding: 18px 18px 0;
+      border-radius: 4px; box-shadow: 5px 12px 24px rgba(60,45,30,0.3);
+      transform: rotate(-1.5deg);
+    }
+    .big-polaroid .photo { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; background: #e9e4da; display: flex; align-items: center; justify-content: center; }
+    .big-polaroid .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .big-polaroid .photo .ph { color: #b3a89a; }
+    .big-polaroid .cap { font-family: "Caveat", "Gaegu", cursive; font-size: 26px; text-align: center; padding: 12px 4px 18px; color: #4a4038; }
+    .todo { text-align: center; color: #777; font-size: 18px; margin-top: 22px; transform: rotate(-1deg); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="photo-nav">
+      <a class="back" href="camera.html">← 사진들로</a>
+      <a class="back" href="index.html">책상으로</a>
+    </div>
+    <div class="big-polaroid">
+      <div class="photo"><img id="pic" alt="" /></div>
+      <div class="cap" id="cap">사진</div>
+    </div>
+    <p class="todo">✏️ 이 사진의 이야기는 곧 채워질 예정이에요.</p>
+  </div>
+
+  <script src="gallery.js"></script>
+  <script>
+    const n = Math.max(1, parseInt(new URLSearchParams(location.search).get("n") || "1", 10));
+    document.getElementById("cap").textContent = "사진 " + n;
+    document.title = "사진 " + n + " 📷";
+    // photoN 을 확장자 돌려가며 로드
+    const pic = document.getElementById("pic");
+    (function tryExt(i) {
+      if (i >= IMG_EXTS.length) {
+        pic.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: "사진 없음" }));
+        return;
+      }
+      pic.onerror = () => tryExt(i + 1);
+      pic.src = "assets/photos/photo" + n + "." + IMG_EXTS[i] + "?v=" + Date.now();
+    })(0);
+  </script>
+</body>
+</html>
