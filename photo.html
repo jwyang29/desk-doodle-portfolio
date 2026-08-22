@@ -23,7 +23,7 @@
 
     /* 스티커 시트(킹받는 하뚜) */
     .sheet-label { font-size: 15px; color: #777; margin: 20px 0 6px; }
-    .sheet { position: relative; width: min(440px, 94vw); margin: 0 auto; touch-action: none; }
+    .sheet { position: relative; width: min(440px, 94vw); margin: 0 auto 16px; touch-action: none; }
     .sheet-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
 
     /* 스티커 (시트/사진/드래그 공통) — 중심 기준 배치 */
@@ -51,9 +51,7 @@
       </div>
 
       <p class="sheet-label">🩹 아래 하트를 떼서 사진에 붙여보세요 (다시 떼면 시트로 돌아가요)</p>
-      <div class="sheet" id="sheet">
-        <img class="sheet-bg" id="sheetBg" alt="스티커 시트" />
-      </div>
+      <div id="sheets"></div>
 
       <div class="actions"><button id="save">이대로 저장 💾</button></div>
       <p class="hint2">다 꾸미면 저장! 사진들 페이지에 꾸민 모습이 미리보기로 떠요 ✨</p>
@@ -68,8 +66,14 @@
     document.title = "사진 " + n + " 📷";
     document.getElementById("pCap").textContent = "사진 " + n;
     const pPhoto = document.getElementById("pPhoto");
-    const sheet = document.getElementById("sheet");
+    const sheetsWrap = document.getElementById("sheets");
     let picImg = null;
+
+    // 스티커 패널: 각 시트 배경 + 담긴 스티커 번호
+    const PANELS = [
+      { bg: "board.png", ids: [1, 2, 3, 4, 5] },        // 킹받는 하뚜 ♥ (빨강)
+      { bg: "panel2.png", ids: [6, 7, 8, 9, 10, 11] },  // 킹받는 흑화뚜 🖤 (검정)
+    ];
 
     const loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
     function contentBBox(img) {
@@ -117,19 +121,33 @@
       x.drawImage(img, sx0, sy0, sw, sh, dx, dy, dw, dh);
     }
 
-    /* ---- 스티커 홈(시트 3/2 그리드) 좌표는 로드 후 계산 ---- */
-    const HOME = []; // idx -> {left%, top%, w%} (sheet 기준, 중심)
+    /* ---- 3/2(3열) 그리드 홈 좌표 계산 ---- */
+    function computeHomes(inner, count) {
+      const perRow = 3, rows = Math.ceil(count / perRow), homes = [], wPct = inner.width * 24 * 100;
+      let idx = 0;
+      for (let r = 0; r < rows; r++) {
+        const k = Math.min(perRow, count - r * perRow);
+        for (let c = 0; c < k; c++) {
+          homes[idx++] = {
+            left: (inner.left + inner.width * ((c + 0.5) / k)) * 100,
+            top: (inner.top + inner.height * ((r + 0.5) / rows)) * 100,
+            w: inner.width * 24,
+          };
+        }
+      }
+      return homes;
+    }
 
-    /* ---- 드래그: 시트 <-> 사진 ---- */
+    /* ---- 드래그: 시트 <-> 사진 (스티커별 home 은 el._home 에 저장) ---- */
     let drag = null;
-    function grab(e, el, idx, url) {
+    function grab(e, el) {
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const cxp = r.left + r.width / 2, cyp = r.top + r.height / 2;
       document.body.appendChild(el);
       el.className = "sticker dragging";
       el.style.width = r.width + "px"; el.style.height = "auto";
-      drag = { el, idx, url, offX: e.clientX - cxp, offY: e.clientY - cyp, pxW: r.width };
+      drag = { el, offX: e.clientX - cxp, offY: e.clientY - cyp, pxW: r.width };
       move(e.clientX, e.clientY);
       try { el.setPointerCapture(e.pointerId); } catch (_) {}
       el.onpointermove = (ev) => move(ev.clientX, ev.clientY);
@@ -146,17 +164,17 @@
         el.style.width = (drag.pxW / ph.width * 100) + "%"; el.style.height = "auto";
         el.style.left = ((ev.clientX - drag.offX - ph.left) / ph.width * 100) + "%";
         el.style.top = ((ev.clientY - drag.offY - ph.top) / ph.height * 100) + "%";
-        el.onpointerdown = (e2) => grab(e2, el, drag.idx, drag.url);
+        el.onpointerdown = (e2) => grab(e2, el);
       } else {
-        returnHome(el, drag.idx, drag.url);
+        returnHome(el);
       }
       drag = null;
     }
-    function returnHome(el, idx, url) {
-      sheet.appendChild(el); el.className = "sticker";
-      const h = HOME[idx];
+    function returnHome(el) {
+      const h = el._home;
+      h.sheet.appendChild(el); el.className = "sticker";
       el.style.left = h.left + "%"; el.style.top = h.top + "%"; el.style.width = h.w + "%"; el.style.height = "auto";
-      el.onpointerdown = (e2) => grab(e2, el, idx, url);
+      el.onpointerdown = (e2) => grab(e2, el);
       el.onpointermove = el.onpointerup = null;
     }
 
@@ -187,36 +205,32 @@
         if (picImg) { pPhoto.innerHTML = '<img class="base" alt="사진 ' + n + '">'; pPhoto.querySelector("img").src = picImg.src; }
         else pPhoto.innerHTML = '<span class="ph">사진 없음</span>';
 
-        // 스티커 시트(킹받는 하뚜)
-        const bimg = await loadImage("assets/board.png");
-        const bbb = contentBBox(bimg);
-        const bcrop = cropUrl(bimg, bbb, 2, 1000);
-        sheet.style.aspectRatio = bcrop.w + " / " + bcrop.h;
-        document.getElementById("sheetBg").src = bcrop.url;
-        const inner = innerRect(bbb);
+        // 스티커 패널들(킹받는 하뚜 / 흑화뚜) — 각각 시트 + 스티커 배치
+        for (const panel of PANELS) {
+          let bimg;
+          try { bimg = await loadImage("assets/" + panel.bg); } catch (e) { continue; }
+          const bbb = contentBBox(bimg); if (!bbb) continue;
+          const bcrop = cropUrl(bimg, bbb, 2, 1000);
+          const sheet = document.createElement("div");
+          sheet.className = "sheet";
+          sheet.style.aspectRatio = bcrop.w + " / " + bcrop.h;
+          const bg = document.createElement("img");
+          bg.className = "sheet-bg"; bg.src = bcrop.url; bg.alt = "스티커 시트";
+          sheet.appendChild(bg);
+          sheetsWrap.appendChild(sheet);
 
-        // 3/2 그리드 홈 좌표
-        const colX0 = [1 / 6, 3 / 6, 5 / 6], colX1 = [2 / 6, 4 / 6], rowY = [1 / 4, 3 / 4];
-        const wPct = inner.width * 26; // 스티커 폭(시트 %)
-        for (let i = 0; i < 5; i++) {
-          const row = i < 3 ? 0 : 1, cols = row === 0 ? colX0 : colX1, ci = row === 0 ? i : i - 3;
-          HOME[i] = {
-            left: (inner.left + inner.width * cols[ci]) * 100,
-            top: (inner.top + inner.height * rowY[row]) * 100,
-            w: wPct,
-          };
-        }
-        // 스티커 생성 → 시트에 배치
-        for (let i = 0; i < 5; i++) {
-          try {
-            const s = await loadImage("assets/sticker" + (i + 1) + ".png");
-            const bb = contentBBox(s); if (!bb) continue;
-            const url = cropUrl(s, bb, 3, 500).url;
-            const el = document.createElement("img");
-            el.src = url; el.draggable = false;
-            returnHome(el, i, url);
-            sheet.appendChild(el);
-          } catch (e) {}
+          const inner = innerRect(bbb);
+          const homes = computeHomes(inner, panel.ids.length);
+          for (let j = 0; j < panel.ids.length; j++) {
+            try {
+              const s = await loadImage("assets/sticker" + panel.ids[j] + ".png");
+              const bb = contentBBox(s); if (!bb) continue;
+              const el = document.createElement("img");
+              el.src = cropUrl(s, bb, 3, 500).url; el.draggable = false;
+              el._home = { sheet, left: homes[j].left, top: homes[j].top, w: homes[j].w };
+              returnHome(el);
+            } catch (e) {}
+          }
         }
       } catch (e) { console.error(e); }
       document.getElementById("loading").remove();
