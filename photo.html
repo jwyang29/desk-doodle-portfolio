@@ -123,17 +123,16 @@
 
     /* ---- 3/2(3열) 그리드 홈 좌표 계산 ---- */
     function computeHomes(inner, count) {
-      const perRow = 3, rows = Math.ceil(count / perRow), homes = [], wPct = inner.width * 24 * 100;
-      let idx = 0;
-      for (let r = 0; r < rows; r++) {
-        const k = Math.min(perRow, count - r * perRow);
-        for (let c = 0; c < k; c++) {
-          homes[idx++] = {
-            left: (inner.left + inner.width * ((c + 0.5) / k)) * 100,
-            top: (inner.top + inner.height * ((r + 0.5) / rows)) * 100,
-            w: inner.width * 24,
-          };
-        }
+      // 고정 3열 그리드에 왼쪽부터 채움 → 패널마다 열 위치가 동일하게 정렬됨
+      const perRow = 3, rows = Math.ceil(count / perRow), homes = [];
+      const colFrac = [1 / 6, 3 / 6, 5 / 6];
+      for (let i = 0; i < count; i++) {
+        const row = Math.floor(i / perRow), col = i % perRow;
+        homes[i] = {
+          left: (inner.left + inner.width * colFrac[col]) * 100,
+          top: (inner.top + inner.height * ((row + 0.5) / rows)) * 100,
+          w: inner.width * 24,
+        };
       }
       return homes;
     }
