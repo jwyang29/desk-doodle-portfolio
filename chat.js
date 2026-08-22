@@ -256,10 +256,12 @@ function addSticker(who, id) {
 
 /* 내 메시지 상황에 맞는 이모티콘 고르기 (컨텍스트 keywords 매칭) */
 const recentEmoji = [];
+let lastUserSticker = null; // 방금 내가 보낸 이모티콘 (봇이 그대로 되돌려보내지 않게)
 function pickBotEmoji() {
   const lastUser = [...history].reverse().find((m) => m.role === "user");
   const text = (lastUser && lastUser.text) || "";
   const matches = EMOJIS.filter((id) => {
+    if (id === lastUserSticker) return false; // 내가 방금 보낸 건 제외
     const c = EMOJI_CONTEXT[id];
     return c && c.keywords && c.keywords.some((k) => text.includes(k));
   });
@@ -309,12 +311,14 @@ form.addEventListener("submit", (e) => {
   if (!text || busy) return;
   addBubble("user", text);
   input.value = "";
+  lastUserSticker = null; // 텍스트를 보냈으니 초기화
   respond();
 });
 
 function sendSticker(id) {
   if (busy) return;
   addSticker("user", id);
+  lastUserSticker = id; // 봇이 같은 이모티콘을 되돌려보내지 않도록
   respond();
 }
 
