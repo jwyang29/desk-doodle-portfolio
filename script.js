@@ -258,8 +258,9 @@ hit.addEventListener("pointercancel", endDrag);
     for (let y = miny; y < band; y++) for (let xx = minx; xx <= maxx; xx++) if (d[(y * cw + xx) * 4 + 3] > 40) { sx += xx; sn++; }
     tipX = (sn ? sx / sn - minx : bw / 2) / bw;
     const sc = pimg.naturalWidth / cw;
-    const oc = document.createElement("canvas"); oc.width = bw; oc.height = bh;
-    oc.getContext("2d").drawImage(pimg, minx * sc, miny * sc, bw * sc, bh * sc, 0, 0, bw, bh);
+    const fw = Math.round(bw * sc), fh = Math.round(bh * sc);
+    const oc = document.createElement("canvas"); oc.width = fw; oc.height = fh;
+    oc.getContext("2d").drawImage(pimg, minx * sc, miny * sc, bw * sc, bh * sc, 0, 0, fw, fh);
     hand.src = oc.toDataURL("image/png");
     handW = Math.round(handH * bw / bh);
     hand.style.width = handW + "px"; hand.style.height = handH + "px";
@@ -306,4 +307,60 @@ hit.addEventListener("pointercancel", endDrag);
     if (a === "exit") exit();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && active) exit(); });
+})();
+
+/* ── 위에서 3번째(가운데) 발자국을 누르면 그 자리에 잉크 고양이가 나타남 ── */
+(function setupPawCat() {
+  const PAW = { x: 35.5, y: 50, w: 6, h: 7 };   // 발자국 중심 + 클릭영역 크기(%)
+  const spot = document.createElement("button");
+  spot.className = "paw-hotspot";
+  spot.style.left = (PAW.x - PAW.w / 2) + "%"; spot.style.top = (PAW.y - PAW.h / 2) + "%";
+  spot.style.width = PAW.w + "%"; spot.style.height = PAW.h + "%";
+  spot.setAttribute("aria-label", "고양이 발자국");
+  stage.appendChild(spot);
+
+  const inkCat = document.createElement("img");
+  inkCat.className = "ink-cat"; inkCat.alt = "";
+  inkCat.style.left = PAW.x + "%"; inkCat.style.top = PAW.y + "%";
+  stage.appendChild(inkCat);
+
+  let CX = 50, CY = 50, shown = false;
+  const applyState = () => {
+    inkCat.style.transform = "translate(" + (-CX) + "%," + (-CY) + "%) scale(" + (shown ? 1 : 0.2) + ")";
+    inkCat.style.opacity = shown ? "1" : "0";
+    inkCat.style.pointerEvents = shown ? "auto" : "none";
+    inkCat.style.cursor = shown ? "pointer" : "default";
+    spot.style.pointerEvents = shown ? "none" : "auto";
+  };
+
+  // Catink 크롭 + 잉크 무게중심(dense) 계산 → 그 지점을 발자국에 정렬
+  const img = new Image();
+  img.onload = () => {
+    const cw = Math.min(700, img.naturalWidth), ch = Math.round(img.naturalHeight * cw / img.naturalWidth);
+    const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, cw, ch);
+    const d = x.getImageData(0, 0, cw, ch).data;
+    let minx = cw, miny = ch, maxx = 0, maxy = 0, sxw = 0, syw = 0, sn = 0;
+    for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) {
+      const i = (y * cw + xx) * 4, white = d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240;
+      if (d[i + 3] > 30 && !white) { if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (y < miny) miny = y; if (y > maxy) maxy = y; sxw += xx; syw += y; sn++; }
+    }
+    const bw = maxx - minx, bh = maxy - miny, sc = img.naturalWidth / cw;
+    CX = sn ? (sxw / sn - minx) / bw * 100 : 50;
+    CY = sn ? (syw / sn - miny) / bh * 100 : 50;
+    inkCat.style.transformOrigin = CX + "% " + CY + "%";
+    const fw = Math.round(bw * sc), fh = Math.round(bh * sc);
+    const oc = document.createElement("canvas"); oc.width = fw; oc.height = fh;
+    oc.getContext("2d").drawImage(img, minx * sc, miny * sc, bw * sc, bh * sc, 0, 0, fw, fh);
+    inkCat.src = oc.toDataURL("image/png");
+    applyState();
+  };
+  img.src = "assets/Catink.png";
+
+  function toggle() { shown = !shown; applyState(); }
+  spot.addEventListener("click", toggle);
+  inkCat.addEventListener("click", toggle);
+  spot.addEventListener("mouseenter", (e) => { tooltip.textContent = "여기 뭐지? 🐾"; tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; tooltip.hidden = false; });
+  spot.addEventListener("mousemove", (e) => { tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; });
+  spot.addEventListener("mouseleave", () => { tooltip.hidden = true; });
 })();

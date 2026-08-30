@@ -73,3 +73,8 @@ html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-s
 .draw-toolbar.on { display: flex; }
 .draw-toolbar button { font-family: "Gaegu", sans-serif; font-size: 16px; cursor: pointer; border: 2px solid var(--ink); border-radius: 12px; background: #fff; padding: 8px 16px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
 .draw-toolbar button:hover { background: #fee75c; }
+
+/* ===== 발자국 → 잉크 고양이 ===== */
+.paw-hotspot { position: absolute; background: transparent; border: none; padding: 0; cursor: pointer; z-index: 6; }
+.ink-cat { position: absolute; width: 17%; height: auto; opacity: 0; pointer-events: none; z-index: 7;
+  transition: transform .45s cubic-bezier(.34, 1.56, .64, 1), opacity .3s ease; user-select: none; -webkit-user-drag: none; }
