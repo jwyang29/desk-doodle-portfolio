@@ -210,3 +210,100 @@ function endDrag() {
 }
 hit.addEventListener("pointerup", endDrag);
 hit.addEventListener("pointercancel", endDrag);
+
+/* ── 연필: 클릭하면 손(PencilHand) 커서로 바뀌고, 누른 채 움직이면
+   연필 끝에서 선이 그려짐 (필기 효과) ── */
+(function setupPencil() {
+  const spot = document.createElement("button");   // 연필 클릭 영역
+  spot.className = "pencil-hotspot";
+  spot.setAttribute("aria-label", "연필로 그리기");
+  stage.appendChild(spot);
+
+  const canvas = document.createElement("canvas");  // 그림 캔버스
+  canvas.className = "draw-layer";
+  stage.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  function fit() {
+    const r = stage.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = 3.2; ctx.strokeStyle = "#2b2b2b";
+  }
+  fit();
+  window.addEventListener("resize", fit);
+
+  const hand = document.createElement("img");       // 연필 든 손 커서
+  hand.className = "pencil-cursor"; hand.alt = "";
+  document.body.appendChild(hand);
+  let tipX = 0.12, handW = 150, handH = 175;         // 펜촉 x비율 / 커서 크기
+
+  const toolbar = document.createElement("div");     // 그리기 툴바
+  toolbar.className = "draw-toolbar";
+  toolbar.innerHTML = '<button data-a="clear">지우기 🧽</button><button data-a="exit">그만 ✕</button>';
+  document.body.appendChild(toolbar);
+
+  // PencilHand 크롭 + 펜촉(맨 위 불투명 픽셀) 위치 계산 → 커서 이미지
+  const pimg = new Image();
+  pimg.onload = () => {
+    const cw = Math.min(700, pimg.naturalWidth), ch = Math.round(pimg.naturalHeight * cw / pimg.naturalWidth);
+    const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(pimg, 0, 0, cw, ch);
+    const d = x.getImageData(0, 0, cw, ch).data;
+    let minx = cw, miny = ch, maxx = 0, maxy = 0;
+    for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) if (d[(y * cw + xx) * 4 + 3] > 40) { if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+    const bw = maxx - minx, bh = maxy - miny;
+    let sx = 0, sn = 0, band = miny + Math.max(2, Math.round(bh * 0.05));
+    for (let y = miny; y < band; y++) for (let xx = minx; xx <= maxx; xx++) if (d[(y * cw + xx) * 4 + 3] > 40) { sx += xx; sn++; }
+    tipX = (sn ? sx / sn - minx : bw / 2) / bw;
+    const sc = pimg.naturalWidth / cw;
+    const oc = document.createElement("canvas"); oc.width = bw; oc.height = bh;
+    oc.getContext("2d").drawImage(pimg, minx * sc, miny * sc, bw * sc, bh * sc, 0, 0, bw, bh);
+    hand.src = oc.toDataURL("image/png");
+    handW = Math.round(handH * bw / bh);
+    hand.style.width = handW + "px"; hand.style.height = handH + "px";
+  };
+  pimg.src = "assets/PencilHand.png";
+
+  let active = false, drawing = false;
+  const toLocal = (cx, cy) => { const r = stage.getBoundingClientRect(); return { x: cx - r.left, y: cy - r.top }; };
+  function moveHand(cx, cy) { hand.style.transform = "translate(" + (cx - tipX * handW) + "px," + cy + "px)"; }
+  function enter() {
+    if (active) return; active = true;
+    canvas.classList.add("active"); hand.classList.add("on"); toolbar.classList.add("on");
+    tooltip.hidden = true; document.body.style.cursor = "none";
+  }
+  function exit() {
+    active = false; drawing = false;
+    canvas.classList.remove("active"); hand.classList.remove("on"); toolbar.classList.remove("on");
+    document.body.style.cursor = "";
+  }
+  spot.addEventListener("click", enter);
+  spot.addEventListener("mouseenter", (e) => { if (active) return; tooltip.textContent = "그려볼까? ✏️"; tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; tooltip.hidden = false; });
+  spot.addEventListener("mousemove", (e) => { if (active) return; tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; });
+  spot.addEventListener("mouseleave", () => { tooltip.hidden = true; });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    if (!active) return;
+    drawing = true; const p = toLocal(e.clientX, e.clientY);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.01, p.y); ctx.stroke();
+    moveHand(e.clientX, e.clientY);
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!active) return;
+    moveHand(e.clientX, e.clientY);
+    if (drawing) { const p = toLocal(e.clientX, e.clientY); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  });
+  const stop = () => { drawing = false; };
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+
+  toolbar.addEventListener("click", (e) => {
+    const a = e.target.getAttribute("data-a"); if (!a) return;
+    if (a === "clear") { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
+    if (a === "exit") exit();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && active) exit(); });
+})();
