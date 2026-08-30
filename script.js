@@ -52,6 +52,16 @@ OBJECTS.forEach((obj) => {
   });
 });
 
+/* 배치용 장식 오버레이 (클릭 없음). 순서 = 겹침(뒤가 위).
+   pencil2(흰색 채움)를 맨 위에 둬서 배경의 기존 연필을 덮음 */
+["notebook.png", "glasses.png", "pencil2.png"].forEach((f) => {
+  const img = new Image();
+  img.className = "layer decor";
+  img.alt = "";
+  img.src = "assets/" + f;
+  stage.appendChild(img);
+});
+
 /* 고양이 팝업 레이어 (tail 클릭 시 왼쪽에서 튀어나옴). cat.png는 나중에 추가 */
 const cat = document.createElement("img");
 cat.className = "cat-pop";
