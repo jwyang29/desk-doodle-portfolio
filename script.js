@@ -364,3 +364,142 @@ hit.addEventListener("pointercancel", endDrag);
   spot.addEventListener("mousemove", (e) => { tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; });
   spot.addEventListener("mouseleave", () => { tooltip.hidden = true; });
 })();
+
+/* ── 붓: 클릭하면 붓 든 손 커서 + 오른쪽에서 팔레트 등장.
+   색 고르고, 브러시 종류(가는붓/넓은붓)에 따라 붓터치가 그려짐 ── */
+(function setupBrush() {
+  // 왼쪽 아래 붓 클릭 영역
+  const spot = document.createElement("button");
+  spot.className = "brush-hotspot";
+  spot.style.left = "13%"; spot.style.top = "54%"; spot.style.width = "12%"; spot.style.height = "31%";
+  spot.setAttribute("aria-label", "붓으로 칠하기");
+  stage.appendChild(spot);
+
+  const canvas = document.createElement("canvas");   // 붓 그림 캔버스
+  canvas.className = "brush-layer";
+  stage.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  function fit() {
+    const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.lineCap = "round"; ctx.lineJoin = "round";
+  }
+  fit(); window.addEventListener("resize", fit);
+
+  const hand = document.createElement("img");        // 붓 든 손 커서
+  hand.className = "brush-cursor"; hand.alt = "";
+  document.body.appendChild(hand);
+
+  const palette = document.createElement("div");     // 팔레트
+  palette.className = "brush-palette";
+  const palImg = document.createElement("img"); palImg.className = "pal-img"; palImg.alt = "팔레트";
+  palette.appendChild(palImg);
+  document.body.appendChild(palette);
+
+  const toolbar = document.createElement("div");     // 툴바
+  toolbar.className = "brush-toolbar";
+  toolbar.innerHTML =
+    '<span class="brush-swatch" id="brushSw"></span>' +
+    '<button data-t="narrow" class="sel">가는붓</button>' +
+    '<button data-t="wide">넓은붓</button>' +
+    '<button data-a="clear">지우기 🧽</button>' +
+    '<button data-a="exit">그만 ✕</button>';
+  document.body.appendChild(toolbar);
+  const swatchEl = toolbar.querySelector("#brushSw");
+
+  // 팔레트 색 웰 (palette 크롭 대비 %)
+  const WELLS = [
+    { x: 23, y: 36, c: "#e5484d" },
+    { x: 16, y: 59, c: "#f5a524" },
+    { x: 33, y: 80, c: "#2b8a3e" },
+    { x: 62, y: 78, c: "#1c7ed6" },
+    { x: 79, y: 62, c: "#9c36b5" },
+  ];
+  let color = WELLS[0].c, curType = "narrow", handW = 150, handH = 175, tipX = 0.3;
+  const brushData = {};
+  const wellEls = [];
+  WELLS.forEach((w, i) => {
+    const b = document.createElement("button");
+    b.className = "pal-well" + (i === 0 ? " sel" : "");
+    b.style.left = w.x + "%"; b.style.top = w.y + "%"; b.style.background = w.c;
+    b.addEventListener("click", () => { color = w.c; wellEls.forEach((e) => e.classList.remove("sel")); b.classList.add("sel"); swatchEl.style.background = color; });
+    palette.appendChild(b); wellEls.push(b);
+  });
+  swatchEl.style.background = color;
+
+  // 이미지 크롭 (+ 펜촉 위치)
+  function loadCrop(src, wantTip, cb) {
+    const im = new Image();
+    im.onload = () => {
+      const cw = Math.min(700, im.naturalWidth), ch = Math.round(im.naturalHeight * cw / im.naturalWidth);
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(im, 0, 0, cw, ch);
+      const d = x.getImageData(0, 0, cw, ch).data;
+      let minx = cw, miny = ch, maxx = 0, maxy = 0;
+      for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) { const i = (y * cw + xx) * 4, white = d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240; if (d[i + 3] > 30 && !white) { if (xx < minx) minx = xx; if (xx > maxx) maxx = xx; if (y < miny) miny = y; if (y > maxy) maxy = y; } }
+      const bw = maxx - minx, bh = maxy - miny, sc = im.naturalWidth / cw;
+      let tip = 0.5;
+      if (wantTip) { let sxw = 0, sn = 0, band = miny + Math.max(2, Math.round(bh * 0.05)); for (let y = miny; y < band; y++) for (let xx = minx; xx <= maxx; xx++) if (d[(y * cw + xx) * 4 + 3] > 40) { sxw += xx; sn++; } tip = (sn ? sxw / sn - minx : bw / 2) / bw; }
+      const fw = Math.round(bw * sc), fh = Math.round(bh * sc);
+      const oc = document.createElement("canvas"); oc.width = fw; oc.height = fh;
+      oc.getContext("2d").drawImage(im, minx * sc, miny * sc, bw * sc, bh * sc, 0, 0, fw, fh);
+      cb({ url: oc.toDataURL("image/png"), tip: tip, ar: bw / bh });
+    };
+    im.src = src;
+  }
+  function setHand() {
+    const d = brushData[curType]; if (!d) return;
+    hand.src = d.url; handW = Math.round(handH * d.ar); tipX = d.tip;
+    hand.style.width = handW + "px"; hand.style.height = handH + "px";
+  }
+  loadCrop("assets/BrushNarrow.png", true, (d) => { brushData.narrow = d; if (curType === "narrow") setHand(); });
+  loadCrop("assets/BrushWide.png", true, (d) => { brushData.wide = d; });
+  loadCrop("assets/palette.png", false, (d) => { palImg.src = d.url; });
+
+  let active = false, drawing = false;
+  const toLocal = (cx, cy) => { const r = stage.getBoundingClientRect(); return { x: cx - r.left, y: cy - r.top }; };
+  function moveHand(cx, cy) { hand.style.transform = "translate(" + (cx - tipX * handW) + "px," + cy + "px)"; }
+  function enter() {
+    if (active) return; active = true;
+    canvas.classList.add("active"); hand.classList.add("on"); palette.classList.add("on"); toolbar.classList.add("on");
+    tooltip.hidden = true; document.body.style.cursor = "none";
+  }
+  function exit() {
+    active = false; drawing = false;
+    canvas.classList.remove("active"); hand.classList.remove("on"); palette.classList.remove("on"); toolbar.classList.remove("on");
+    document.body.style.cursor = "";
+  }
+  spot.addEventListener("click", enter);
+  spot.addEventListener("mouseenter", (e) => { tooltip.textContent = "붓칠해볼까? 🖌️"; tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; tooltip.hidden = false; });
+  spot.addEventListener("mousemove", (e) => { tooltip.style.left = e.clientX + "px"; tooltip.style.top = e.clientY + "px"; });
+  spot.addEventListener("mouseleave", () => { tooltip.hidden = true; });
+
+  function strokeStyleFor() {
+    if (curType === "wide") { ctx.lineWidth = 26; ctx.globalAlpha = 0.88; }
+    else { ctx.lineWidth = 7; ctx.globalAlpha = 1; }
+    ctx.strokeStyle = color;
+  }
+  canvas.addEventListener("pointerdown", (e) => {
+    if (!active) return;
+    drawing = true; strokeStyleFor(); const p = toLocal(e.clientX, e.clientY);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.01, p.y); ctx.stroke();
+    moveHand(e.clientX, e.clientY);
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!active) return;
+    moveHand(e.clientX, e.clientY);
+    if (drawing) { const p = toLocal(e.clientX, e.clientY); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  });
+  const stop = () => { drawing = false; };
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+
+  toolbar.addEventListener("click", (e) => {
+    const t = e.target.getAttribute("data-t"), a = e.target.getAttribute("data-a");
+    if (t) { curType = t; setHand(); toolbar.querySelectorAll("[data-t]").forEach((b) => b.classList.toggle("sel", b.getAttribute("data-t") === t)); }
+    if (a === "clear") { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
+    if (a === "exit") exit();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && active) exit(); });
+})();

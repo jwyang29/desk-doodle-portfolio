@@ -74,6 +74,27 @@ html, body { margin: 0; min-height: 100%; font-family: "Gaegu", "Caveat", sans-s
 .draw-toolbar button { font-family: "Gaegu", sans-serif; font-size: 16px; cursor: pointer; border: 2px solid var(--ink); border-radius: 12px; background: #fff; padding: 8px 16px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
 .draw-toolbar button:hover { background: #fee75c; }
 
+/* ===== 붓칠(브러시) ===== */
+.brush-hotspot { position: absolute; background: transparent; border: none; padding: 0; cursor: pointer; z-index: 6; }
+.brush-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 9; pointer-events: none; }
+.brush-layer.active { pointer-events: auto; cursor: none; touch-action: none; }
+.brush-cursor { position: fixed; top: 0; left: 0; z-index: 300; pointer-events: none; display: none; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2)); }
+.brush-cursor.on { display: block; }
+/* 오른쪽에서 튀어나오는 팔레트 */
+.brush-palette { position: fixed; top: 15%; right: 1.5vw; width: min(300px, 34vw); z-index: 250;
+  transform: translateX(122%); opacity: 0; transition: transform .5s cubic-bezier(.34,1.5,.55,1), opacity .35s ease; pointer-events: none; }
+.brush-palette.on { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.pal-img { width: 100%; height: auto; display: block; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.pal-well { position: absolute; width: 13%; height: 13%; border-radius: 50%; transform: translate(-50%,-50%);
+  border: 2px solid rgba(0,0,0,0.55); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.pal-well.sel { outline: 3px solid var(--ink); outline-offset: 2px; }
+.brush-toolbar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 320; display: none; gap: 8px; align-items: center; }
+.brush-toolbar.on { display: flex; }
+.brush-toolbar button { font-family: "Gaegu", sans-serif; font-size: 16px; cursor: pointer; border: 2px solid var(--ink); border-radius: 12px; background: #fff; padding: 8px 14px; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+.brush-toolbar button.sel { background: #fff7d6; }
+.brush-toolbar button:hover { background: #fee75c; }
+.brush-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px #fff; }
+
 /* ===== 발자국 → 잉크 고양이 ===== */
 .paw-hotspot { position: absolute; background: transparent; border: none; padding: 0; cursor: pointer; z-index: 6; }
 .ink-cat { position: absolute; width: 17%; height: auto; opacity: 0; pointer-events: none; z-index: 7;
