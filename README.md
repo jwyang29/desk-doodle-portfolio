@@ -1,1 +1,1 @@
-portfolio website for Jungwon Moon
+student project - portfolio website 
